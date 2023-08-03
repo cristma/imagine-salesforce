@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace Com.ImagineCode.Force;
@@ -53,5 +54,30 @@ public sealed class ForceClient : IForceClient
             !response.IsSuccessStatusCode ? new List<string> { await response.Content.ReadAsStringAsync(token) } 
                                           : null
         );
+    }
+
+    /// <summary>
+    /// Acquires the available limits for an instance.
+    /// </summary>
+    /// <param name="authToken">The bearer token that will be used to make authenticated requests.</param>
+    /// <param name="apiVersion">The api version that is used to make the request.</param>
+    /// <param name="token">The cancellation token for cancelling the async process of the request.</param>
+    /// <returns>Meta information about the limits for this instance.</returns>
+    public async Task<ForceResponse<InstanceLimits>?> GetLimitsAsync(string? authToken, string? apiVersion, CancellationToken token = default)
+    {
+        if (string.IsNullOrEmpty(authToken))
+            throw new ArgumentException("Bearer token must be specified in order to make and authenticated request.", nameof(authToken));
+        if (string.IsNullOrEmpty(apiVersion))
+            throw new ArgumentException("API version must be specified when making a request for meta information under instance version.", nameof(apiVersion));
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+        using var response = await _httpClient.GetAsync($"/services/data/{apiVersion}/limits");
+
+        return new ForceResponse<InstanceLimits>(
+            response.IsSuccessStatusCode ? JsonSerializer.Deserialize<InstanceLimits>(await response.Content.ReadAsStringAsync(token), _serializerOptions)
+                                         : null,
+            response.StatusCode,
+            !response.IsSuccessStatusCode ? new List<string> { await response.Content.ReadAsStringAsync(token) }
+                                          : null);
     }
 }
