@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ContentWithTargetPath Include="Data/*.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <TargetPath>Data/%(Filename)%(Extension)</TargetPath>
+    </ContentWithTargetPath>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Force\Com.ImagineCode.Force.csproj" />
   </ItemGroup>
 

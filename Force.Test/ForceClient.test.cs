@@ -144,4 +144,145 @@ public sealed class ForceClient_Test
         Assert.IsNull(response?.Errors);
         Assert.IsTrue(response?.Data?.Any());
     }
+
+    [TestMethod, ExpectedException(typeof(ArgumentException))]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_NullToken_ThrowsArgumentException()
+    {
+        string? testToken = null;
+        var testVersion = "v56.0";
+        var testMessage = "There was an error processing your request.";
+        var mockHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        mockHandler.Protected().Setup<Task<HttpResponseMessage>>(
+            "SendAsync", 
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage()
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Content = new StringContent(testMessage)
+            })
+            .Verifiable();
+
+        var httpClient = new HttpClient(mockHandler.Object);
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+    }
+
+    [TestMethod, ExpectedException(typeof(ArgumentException))]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_EmptyToken_ThrowsArgumentException()
+    {
+        var testToken = string.Empty;
+        var testVersion = "v56.0";
+        var httpClient = new HttpClient();
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+    }
+
+    [TestMethod, ExpectedException(typeof(ArgumentException))]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_NullVersion_ThrowsArgumentException()
+    {
+        var testToken = Guid.NewGuid().ToString("n");
+        string? testVersion = null;
+        var httpClient = new HttpClient();
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+    }
+
+    [TestMethod, ExpectedException(typeof(ArgumentException))]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_EmptyVersion_ThrowsArgumentException()
+    {
+        var testToken = Guid.NewGuid().ToString("n");
+        var testVersion = string.Empty;
+        var httpClient = new HttpClient();
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+    }
+
+    [TestMethod]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_400StatusCode_ReturnsStatusBody()
+    {
+        var testToken = Guid.NewGuid().ToString("n");
+        var testVersion = "v56.0";
+        var testMessage = "There was an error processing your request.";
+        var mockHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        mockHandler.Protected().Setup<Task<HttpResponseMessage>>(
+            "SendAsync", 
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage()
+            {
+                StatusCode = HttpStatusCode.BadRequest,
+                Content = new StringContent(testMessage)
+            })
+            .Verifiable();
+
+        var httpClient = new HttpClient(mockHandler.Object);
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+
+        Assert.IsTrue(response?.HasErrors);
+        Assert.AreEqual(HttpStatusCode.BadRequest, response?.StatusCode);
+        CollectionAssert.Contains(response?.Errors?.ToList(), testMessage);
+        Assert.IsNull(response?.Data);
+    }
+
+    [TestMethod]
+    [TestCategory("Unit")]
+    public async Task GetLimitsAsync_200StatusCode_ReturnsData()
+    {
+        var testToken = Guid.NewGuid().ToString("n");
+        var testVersion = "v56.0";
+        var testObject = JsonSerializer.Deserialize<InstanceLimits>(File.ReadAllText("./Data/OrgLimits.json"));
+        var testMessage = JsonSerializer.Serialize(testObject);
+        var mockHandler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        mockHandler.Protected().Setup<Task<HttpResponseMessage>>(
+            "SendAsync", 
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage()
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(testMessage)
+            })
+            .Verifiable();
+
+        var httpClient = new HttpClient(mockHandler.Object);
+
+        var client = new ForceClient("https://fakedomain.my.salesforce.com/", httpClient);
+        var response = await client.GetLimitsAsync(testToken, testVersion);
+
+        Assert.IsFalse(response?.HasErrors);
+        Assert.AreEqual(HttpStatusCode.OK, response?.StatusCode);
+        Assert.IsNull(response?.Errors);
+        Assert.IsNotNull(response?.Data);
+    }
+
+    [TestMethod]
+    [TestCategory("Integration")]
+    [Ignore("This test is only ran on a limited basis since the subdomain need to be valid.  We will run it periodically to confirm integration.")]
+    public async Task GetLimitsAsync_Integration_CheckResults()
+    {
+        var token = "[replacetoken]";
+        var version = "v58.0";
+        var url = "https://[replace].my.salesforce.com/";
+        var httpClient = new HttpClient();
+
+        var client = new ForceClient(url, httpClient);
+        var response = await client.GetLimitsAsync(token, version);
+
+        Assert.IsFalse(response?.HasErrors);
+        Assert.AreEqual(HttpStatusCode.OK, response?.StatusCode);
+        Assert.IsNull(response?.Errors);
+        Assert.IsNotNull(response?.Data);
+    }
 }
